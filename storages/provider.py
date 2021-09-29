@@ -70,7 +70,6 @@ class StorageProvider:
         constructor_arguments = StorageConstructorArgumentsExtractor.extract(
             storage_backend_class=backend_class
         )
-        print(constructor_arguments)
         constructor_argument_values = EnvironmentVariablesCollector.collect(
             names=constructor_arguments
         )

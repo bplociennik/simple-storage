@@ -17,25 +17,25 @@ from storages.provider import (DynamicStorageLoader,
 
 class TestStorageConstructorArgumentsExtractor(TestCase):
     class _TestStorage(Storage):
-        def __init__(self, a, b, c, d, e):
+        def __init__(self, a, b, c, d = "d", e = "e"):
             pass
 
     def test_extraction(self):
         arguments = StorageConstructorArgumentsExtractor.extract(
             storage_backend_class=self._TestStorage
         )
-        expected_arguments = ("a", "b", "c", "d", "e")
-        for index, argument in enumerate(arguments):
-            assert argument == expected_arguments[index]
+        expected_arguments = {"a": True, "b": True, "c": True, "d": False, "e": False}
+        for argument_name, is_required in arguments.items():
+            assert is_required == expected_arguments[argument_name]
 
     def test_extraction_with_custom_ignored_arguments(self):
         arguments = StorageConstructorArgumentsExtractor.extract(
             storage_backend_class=self._TestStorage,
             ignored_arguments=("a", "b"),
         )
-        expected_arguments = ("self", "c", "d", "e")
-        for index, argument in enumerate(arguments):
-            assert argument == expected_arguments[index]
+        expected_arguments = {"self": True, "c": True, "d": False, "e": False}
+        for argument_name, is_required in arguments.items():
+            assert is_required == expected_arguments[argument_name]
 
 
 class TestEnvironmentVariablesCollector:
@@ -53,28 +53,28 @@ class TestEnvironmentVariablesCollector:
             yield
 
     def test_collecting_a_and_b(self):
-        names = ("param_a", "param_b")
+        names = {"param_a": True, "param_b": True}
         values = EnvironmentVariablesCollector.collect(names=names)
         assert values["param_a"] == "a"
         assert values["param_b"] == "b"
         assert len(values) == 2
 
     def test_collecting_b_and_c(self):
-        names = ("param_b", "param_c")
+        names = {"param_b": True, "param_c": True}
         values = EnvironmentVariablesCollector.collect(names=names)
         assert values["param_b"] == "b"
         assert values["param_c"] == "c"
         assert len(values) == 2
 
     def test_collecting_prefixed(self):
-        names = ("param",)
+        names = {"param": True}
         values = EnvironmentVariablesCollector.collect(
             names=names, prefix="NOT_STORAGES_RELATED_"
         )
         assert values["param"] == "any_value"
 
     def test_missing_environment_variable(self):
-        names = ("missing",)
+        names = {"missing": True}
         with pytest.raises(MissingEnvironmentVariableError):
             EnvironmentVariablesCollector.collect(names=names)
 

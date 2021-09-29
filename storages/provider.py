@@ -2,7 +2,7 @@ import os
 from importlib import import_module
 from inspect import Signature
 from os import environ
-from typing import Any, Dict, Generator, Iterable, Tuple, Type
+from typing import Any, Dict, Tuple, Type
 
 from storages.backends.base import Storage
 from storages.exceptions import MissingEnvironmentVariableError
@@ -15,14 +15,14 @@ class StorageConstructorArgumentsExtractor:
     def extract(
         storage_backend_class: Type[Storage],
         ignored_arguments: Tuple[str, ...] = _DEFAULT_IGNORED_ARGUMENTS,
-    ) -> Generator[str, None, None]:
+    ) -> Dict[str, bool]:
         signature = Signature.from_callable(storage_backend_class.__init__)
-        return (
-            parameter.name
+        return {
+            parameter.name: parameter.default is Signature.empty
             for _, parameter in signature.parameters.items()
             if parameter.kind is parameter.POSITIONAL_OR_KEYWORD
             and parameter.name not in ignored_arguments
-        )
+        }
 
 
 class EnvironmentVariablesCollector:
@@ -30,13 +30,13 @@ class EnvironmentVariablesCollector:
 
     @classmethod
     def collect(
-        cls, names: Iterable[str], prefix: str = _DEFAULT_PREFIX
+        cls, names: Dict[str, bool], prefix: str = _DEFAULT_PREFIX
     ) -> Dict[str, Any]:
         values = {}
-        for name in names:
+        for name, required in names.items():
             environment_variable_name = f"{prefix}{name.upper()}"
             value = os.environ.get(environment_variable_name)
-            if value is None:
+            if value is None and required:
                 raise MissingEnvironmentVariableError(
                     name=environment_variable_name
                 )
@@ -70,6 +70,7 @@ class StorageProvider:
         constructor_arguments = StorageConstructorArgumentsExtractor.extract(
             storage_backend_class=backend_class
         )
+        print(constructor_arguments)
         constructor_argument_values = EnvironmentVariablesCollector.collect(
             names=constructor_arguments
         )
